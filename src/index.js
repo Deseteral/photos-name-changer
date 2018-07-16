@@ -10,12 +10,14 @@ if (!directoryPath) {
 }
 
 const files = fs.readdirSync(directoryPath, { encoding: 'utf8' });
-const photos = files.filter(filepath => (
-    filepath.toLowerCase().endsWith('.jpg') ||
-    filepath.toLowerCase().endsWith('.jpeg')
+console.log(files);
+const photos = files.filter(filename => (
+    filename.toLowerCase().endsWith('.jpg') ||
+    filename.toLowerCase().endsWith('.jpeg')
   ));
 
-photos.forEach(filepath => {
+photos.forEach(filename => {
+  const filepath = path.join(directoryPath, filename);
   ExifImage({ image: filepath }, (err, exifData) => {
     if (err) {
       console.error(err);
@@ -28,10 +30,10 @@ photos.forEach(filepath => {
       .split(' ')
       .map(s => s.replace(/:/g, ''));
 
-    const extension = path.extname(filepath);
+    const extension = path.extname(filename);
 
     const newFilename = `IMG_${date}_${time}${extension}`;
-    const newFilePath = `${fs.dirname(filepath)}/${newFilename}`;
+    const newFilePath = path.join(directoryPath, newFilename);
 
     fs.renameSync(filepath, newFilePath);
 
