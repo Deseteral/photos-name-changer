@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { promisify } = require('util');
 const ExifImage = require('exif').ExifImage;
+
+const getExifData = promisify(ExifImage);
 
 const directoryPath = process.argv[2];
 
@@ -9,34 +12,30 @@ if (!directoryPath) {
   process.exit(1);
 }
 
-const files = fs.readdirSync(directoryPath, { encoding: 'utf8' });
-console.log(files);
-const photos = files.filter(filename => (
-    filename.toLowerCase().endsWith('.jpg') ||
-    filename.toLowerCase().endsWith('.jpeg')
-  ));
+fs.readdirSync(directoryPath, { encoding: 'utf8' })
+  .map(fileName => fileName.toLowerCase())
+  .filter(fileName => (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')))
+  .forEach(async fileName => {
+    const filePath = path.join(directoryPath, fileName);
 
-photos.forEach(filename => {
-  const filepath = path.join(directoryPath, filename);
-  ExifImage({ image: filepath }, (err, exifData) => {
-    if (err) {
+    try {
+      const exifData = await getExifData({ image: filePath });
+
+      const photoDate = exifData.exif.CreateDate; // 2018:04:29 12:32:44
+      const [date, time] = photoDate
+        .split(' ')
+        .map(s => s.replace(/:/g, ''));
+
+      const extension = path.extname(fileName);
+
+      const newFileName = `IMG_${date}_${time}${extension}`;
+      const newFilePath = path.join(directoryPath, newFileName);
+
+      fs.renameSync(filePath, newFilePath);
+
+      console.log(`${newFileName} <- ${filePath}`);
+    } catch (err) {
       console.error(err);
       process.exit(1);
     }
-
-    const photoDate = exifData.exif.CreateDate; // 2018:04:29 12:32:44
-
-    const [date, time] = photoDate
-      .split(' ')
-      .map(s => s.replace(/:/g, ''));
-
-    const extension = path.extname(filename);
-
-    const newFilename = `IMG_${date}_${time}${extension}`;
-    const newFilePath = path.join(directoryPath, newFilename);
-
-    fs.renameSync(filepath, newFilePath);
-
-    console.log(`${newFilename} <- ${filepath}`);
   });
-});
